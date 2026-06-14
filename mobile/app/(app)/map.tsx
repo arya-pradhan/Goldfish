@@ -133,7 +133,7 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       {location ? (
-        <MapView style={StyleSheet.absoluteFillObject} styleURL="mapbox://styles/mapbox/dark-v11">
+        <MapView style={StyleSheet.absoluteFill} styleURL="mapbox://styles/mapbox/dark-v11">
           <Camera zoomLevel={13} centerCoordinate={[location.lng, location.lat]} animationDuration={0} />
 
           {transactions.length > 0 && (

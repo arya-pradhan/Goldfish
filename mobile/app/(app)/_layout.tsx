@@ -98,10 +98,10 @@ export default function AppLayout() {
           tabBarInactiveTintColor: '#555',
         }}
       >
-        <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarIcon: ({ color }) => <TabIcon emoji="🏠" color={color} /> }} />
-        <Tabs.Screen name="map" options={{ title: 'Map', tabBarIcon: ({ color }) => <TabIcon emoji="🗺️" color={color} /> }} />
-        <Tabs.Screen name="zones" options={{ title: 'Zones', tabBarIcon: ({ color }) => <TabIcon emoji="🔥" color={color} /> }} />
-        <Tabs.Screen name="account" options={{ title: 'Account', tabBarIcon: ({ color }) => <TabIcon emoji="👤" color={color} /> }} />
+        <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarIcon: () => <TabIcon emoji="🏠" /> }} />
+        <Tabs.Screen name="map" options={{ title: 'Map', tabBarIcon: () => <TabIcon emoji="🗺️" /> }} />
+        <Tabs.Screen name="zones" options={{ title: 'Zones', tabBarIcon: () => <TabIcon emoji="🔥" /> }} />
+        <Tabs.Screen name="account" options={{ title: 'Account', tabBarIcon: () => <TabIcon emoji="👤" /> }} />
       </Tabs>
 
       {activeZone && (
@@ -128,7 +128,7 @@ export default function AppLayout() {
   )
 }
 
-function TabIcon({ emoji, color }: { emoji: string; color: string }) {
+function TabIcon({ emoji }: { emoji: string }) {
   const { Text } = require('react-native')
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>
 }

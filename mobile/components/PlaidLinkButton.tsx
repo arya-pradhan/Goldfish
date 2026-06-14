@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { TouchableOpacity, Text, ActivityIndicator, Alert } from 'react-native'
-import { PlaidLink, LinkSuccess, LinkExit } from 'react-native-plaid-link-sdk'
+import { create, open, destroy } from 'react-native-plaid-link-sdk'
+import type { LinkSuccess, LinkExit } from 'react-native-plaid-link-sdk'
 import { apiFetch } from '../lib/api'
 
 type Props = {
@@ -8,17 +9,40 @@ type Props = {
 }
 
 export default function PlaidLinkButton({ onLinked }: Props) {
-  const [linkToken, setLinkToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function fetchLinkToken() {
+  async function handlePress() {
     setLoading(true)
     try {
       const { link_token } = await apiFetch<{ link_token: string }>(
         '/api/plaid/create-link-token',
         { method: 'POST' },
       )
-      setLinkToken(link_token)
+
+      create({ token: link_token })
+
+      open({
+        onSuccess: async (success: LinkSuccess) => {
+          try {
+            await apiFetch('/api/plaid/exchange-token', {
+              method: 'POST',
+              body: { public_token: success.publicToken },
+            })
+            await apiFetch('/api/plaid/transactions', { method: 'POST' })
+            onLinked?.()
+          } catch (e: any) {
+            Alert.alert('Link error', e.message)
+          } finally {
+            destroy()
+          }
+        },
+        onExit: (exit: LinkExit) => {
+          if (exit.error) {
+            Alert.alert('Plaid exit', exit.error.displayMessage ?? 'Cancelled')
+          }
+          destroy()
+        },
+      })
     } catch (e: any) {
       Alert.alert('Error', e.message)
     } finally {
@@ -26,48 +50,16 @@ export default function PlaidLinkButton({ onLinked }: Props) {
     }
   }
 
-  async function handleSuccess(success: LinkSuccess) {
-    try {
-      await apiFetch('/api/plaid/exchange-token', {
-        method: 'POST',
-        body: { public_token: success.publicToken },
-      })
-      await apiFetch('/api/plaid/transactions', { method: 'POST' })
-      onLinked?.()
-    } catch (e: any) {
-      Alert.alert('Link error', e.message)
-    }
-  }
-
-  function handleExit(exit: LinkExit) {
-    if (exit.error) Alert.alert('Plaid exit', exit.error.displayMessage ?? 'Cancelled')
-    setLinkToken(null)
-  }
-
-  if (linkToken) {
-    return (
-      <PlaidLink
-        tokenConfig={{ token: linkToken }}
-        onSuccess={handleSuccess}
-        onExit={handleExit}
-      >
-        <TouchableOpacity className="bg-ocean px-6 py-3 rounded-2xl items-center">
-          <Text className="text-white font-semibold text-base">Opening Plaid…</Text>
-        </TouchableOpacity>
-      </PlaidLink>
-    )
-  }
-
   return (
     <TouchableOpacity
-      onPress={fetchLinkToken}
+      onPress={handlePress}
       disabled={loading}
-      className="bg-brand px-6 py-3 rounded-2xl items-center"
+      style={{ backgroundColor: '#FF6B35', borderRadius: 16, padding: 16, alignItems: 'center' }}
     >
       {loading ? (
         <ActivityIndicator color="#fff" />
       ) : (
-        <Text className="text-white font-semibold text-base">Link Bank Account</Text>
+        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Link Bank Account</Text>
       )}
     </TouchableOpacity>
   )

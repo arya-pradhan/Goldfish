@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export const GEOFENCE_TASK = 'GOLDFISH_GEOFENCE_TASK'
 
-TaskManager.defineTask(GEOFENCE_TASK, ({ data, error }) => {
+TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   if (error) {
     console.error('[Geofence] Task error:', error)
     return
