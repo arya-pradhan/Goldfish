@@ -29,7 +29,10 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Goldfish needs your location to warn you near high-spend zones.",
           "locationAlwaysPermission": "Goldfish needs background location to alert you when entering spending zones.",
-          "locationWhenInUsePermission": "Goldfish needs your location to show your spending heatmap."
+          "locationWhenInUsePermission": "Goldfish needs your location to show your spending heatmap.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ],
       [

@@ -8,6 +8,7 @@ import { isAuthenticated } from '../../lib/auth'
 import { apiFetch } from '../../lib/api'
 import HotZoneOverlay from '../../components/HotZoneOverlay'
 import DistractionCard from '../../components/DistractionCard'
+import { GEOFENCE_TASK, ZONE_MAP_KEY, PENDING_HOTZONE_KEY } from '../../tasks/geofenceTask'
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -41,6 +42,7 @@ export default function AppLayout() {
       setChecking(false)
 
       await registerPushToken()
+      await registerGeofences()
       await checkPendingZone()
 
       if (__DEV__ && process.env.EXPO_PUBLIC_SIMULATE_HOTZONE === 'true') {
@@ -60,17 +62,58 @@ export default function AppLayout() {
     }).catch(() => {})
   }
 
-  async function checkPendingZone() {
-    const raw = await AsyncStorage.getItem('PENDING_HOTZONE')
-    if (!raw) return
-    await AsyncStorage.removeItem('PENDING_HOTZONE')
+  // Fetch the user's hot zones, cache their details for the background task,
+  // and register them as native geofences so ENTER events fire even when closed.
+  async function registerGeofences() {
     try {
-      const region = JSON.parse(raw)
+      const fg = await Location.requestForegroundPermissionsAsync()
+      if (fg.status !== 'granted') return
+      // Background ("Always") permission is required for geofencing to fire when closed.
+      await Location.requestBackgroundPermissionsAsync()
+
+      const data = await apiFetch<{ zones: any[] }>('/api/zones/list')
+      const zones: any[] = data?.zones ?? []
+      if (zones.length === 0) return
+
+      // Cache identifier -> rich details so the background task can build a
+      // meaningful notification + overlay payload.
+      const zoneMap: Record<string, ActiveZone> = {}
+      const regions = zones.map((z) => {
+        const identifier = String(z._id)
+        zoneMap[identifier] = {
+          identifier,
+          zoneLabel: z.label ?? 'Hot Zone',
+          totalSpent: z.totalSpend ?? 0,
+          visitCount: z.visitCount ?? 0,
+        }
+        return {
+          identifier,
+          latitude: z.centerLat,
+          longitude: z.centerLng,
+          radius: z.radiusMeters ?? 200,
+          notifyOnEnter: true,
+          notifyOnExit: false,
+        }
+      })
+
+      await AsyncStorage.setItem(ZONE_MAP_KEY, JSON.stringify(zoneMap))
+      await Location.startGeofencingAsync(GEOFENCE_TASK, regions)
+    } catch (e) {
+      console.warn('[Geofence] registration failed:', e)
+    }
+  }
+
+  async function checkPendingZone() {
+    const raw = await AsyncStorage.getItem(PENDING_HOTZONE_KEY)
+    if (!raw) return
+    await AsyncStorage.removeItem(PENDING_HOTZONE_KEY)
+    try {
+      const zone = JSON.parse(raw)
       setActiveZone({
-        identifier: region.identifier ?? '',
-        zoneLabel: region.identifier ?? 'Hot Zone',
-        totalSpent: 0,
-        visitCount: 0,
+        identifier: zone.identifier ?? '',
+        zoneLabel: zone.zoneLabel ?? 'Hot Zone',
+        totalSpent: zone.totalSpent ?? 0,
+        visitCount: zone.visitCount ?? 0,
       })
     } catch {}
   }
